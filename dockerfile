@@ -20,8 +20,8 @@ RUN apt-get update \
       curl \
       unzip \
       pkg-config \
-      ca-certificates \
       ccache \
+      ca-certificates \
       passwd \
       libpam-modules \
       gfortran \
@@ -55,10 +55,6 @@ RUN apt-get update \
 #--------------------------------------------------
 # 2. Configure Ccache via symlink farm
 #--------------------------------------------------
-RUN apt-get update \
- && apt-get install -y --no-install-recommends ccache \
- && rm -rf /var/lib/apt/lists/*
-
 # Prepend the symlink farm so gcc, cc, clang, etc go to ccache
 ENV PATH="/usr/lib/ccache:${PATH}" \
     CCACHE_DIR="/ccache" \
@@ -110,11 +106,32 @@ ARG HOST_GID=1000
 RUN groupadd -g "${HOST_GID}" "${USERNAME}" \
  && useradd -m -u "${HOST_UID}" -g "${HOST_GID}" -s /bin/bash "${USERNAME}"
 
+#--------------------------------------------------
+# 8. Install Zsh and dependencies
+#--------------------------------------------------
+RUN apt-get update && apt-get install -y \
+    zsh \
+    locales \
+    && locale-gen en_US.UTF-8 \
+    && usermod -s /bin/zsh ${USERNAME} \
+    && rm -rf /var/lib/apt/lists/*
+
+# Set locale (optional but good practice)
+ENV LANG=en_US.UTF-8
+ENV LANGUAGE=en_US:en
+ENV LC_ALL=en_US.UTF-8
+
+# Set Zsh as default shell explicitly
+SHELL ["/bin/zsh", "-c"]
+
 USER ${USERNAME}
 
+# Install Oh My Zsh
+RUN RUNZSH=no CHSH=no sh -c "$(curl -fsSL https://raw.githubusercontent.com/ohmyzsh/ohmyzsh/master/tools/install.sh)"
+
 #--------------------------------------------------
-# 8. Workspace and Default Command
+# 9. Workspace and Default Command
 #--------------------------------------------------
 # WORKDIR /workspace
 # VOLUME ["/workspace/.ccache"]
-CMD ["bash"]
+CMD ["zsh", "-l"]
